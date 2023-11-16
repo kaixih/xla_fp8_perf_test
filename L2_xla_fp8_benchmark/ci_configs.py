@@ -13,7 +13,7 @@ class GPT5BSynthetic(GPT126M, SyntheticDataset):
   USE_REPEATED_LAYER = True
   ICI_MESH_SHAPE = [1, 8, 1]
   DCN_MESH_SHAPE = [1, 1, 1]
-  #CHECKPOINT_POLICY = layers.AutodiffCheckpointType.SAVE_DOT_WITH_NO_BATCH_DIM
+  CHECKPOINT_POLICY = layers.AutodiffCheckpointType.SAVE_DOT_WITH_NO_BATCH_DIM
   MAX_STEPS = 100
 
   PERCORE_BATCH_SIZE = 8
