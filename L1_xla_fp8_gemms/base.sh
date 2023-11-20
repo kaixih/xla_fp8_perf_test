@@ -61,25 +61,67 @@ cat > match_fp8_bprop.ll <<EOF
 EOF
 
 TARGET_HLO_FILE=$XLA_DUMP_DIR/module_0025.pjit__wrapped_step_fn.sm_9.0_gpu_after_optimizations.txt
-FileCheck-14 --input-file $TARGET_HLO_FILE match_fp8_fprop.ll &> /dev/null
+TMPFC="$TMPDIR/$(mktemp tmp.XXXXXX)"
+FileCheck-14 --input-file $TARGET_HLO_FILE match_fp8_fprop.ll &> $TMPFC
 FWD_FAILURE=$?
-FileCheck-14 --input-file $TARGET_HLO_FILE match_fp8_bprop.ll &> /dev/null
-BWD_FAILURE=$?
 
 if [[ $FWD_FAILURE -eq 0 ]]; then
   echo FWD CHECKING ... Pass
 else
-  echo FWD CHECKING ... FAIL: Got "<" $FWD_FP8_GEMMS FP8 GEMMS
+  GOT=$(cat $TMPFC | awk '{
+      is_err = 0
+      is_cc = 0
+      m = "NA"
+      for(i = 1; i <= NF; i++) {
+        if (match($i, /error:/)) {
+          is_err = 1
+        }
+        if (match($i, /CHECK-COUNT:/)) {
+          is_cc = 1
+        }
+        if (match($i, /\([0-9]+/)) {
+          m = substr($i, 2)
+        }
+      }
+      if (is_err && is_cc) {
+        print m
+      }
+  }')
+  echo FWD CHECKING ... FAIL: EXPECTED $FWD_FP8_GEMMS FP8 GEMMS, BUT GOT $((GOT - 1))
 fi
+
+FileCheck-14 --input-file $TARGET_HLO_FILE match_fp8_bprop.ll &> $TMPFC
+BWD_FAILURE=$?
 
 if [[ $BWD_FAILURE -eq 0 ]]; then
   echo BWD CHECKING ... Pass
 else
-  echo BWD CHECKING ... FAIL: Got "<" $BWD_FP8_GEMMS FP8 GEMMS
+  GOT=$(cat $TMPFC | awk '{
+      is_err = 0
+      is_cc = 0
+      m = "NA"
+      for(i = 1; i <= NF; i++) {
+        if (match($i, /error:/)) {
+          is_err = 1
+        }
+        if (match($i, /CHECK-COUNT:/)) {
+          is_cc = 1
+        }
+        if (match($i, /\([0-9]+/)) {
+          m = substr($i, 2)
+        }
+      }
+      if (is_err && is_cc) {
+        print m
+      }
+  }')
+  echo BWD CHECKING ... FAIL: EXPECTED $BWD_FP8_GEMMS FP8 GEMMS, BUT GOT $((GOT - 1))
 fi
+
+rm -f "$TMPFC"
+rm -f "$TMPFILE"
+rm -rf "$XLA_DUMP_DIR"
 
 if [[ $FWD_FAILURE -ne 0 || $BWD_FAILURE -ne 0 ]]; then
   exit 1
 fi
-
-
