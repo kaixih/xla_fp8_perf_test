@@ -15,5 +15,16 @@ GPT5BSynthetic          XLA bf16                         triton_gemm    8     0.
 GPT5BSynthetic          XLA bf16                triton_gemm,cudnn_ln    8     0.552      255
 ```
 
+```
+$ cd xla_fp8_perf_test/L1_xla_fp8_gemms
+$ bash test.sh
+Checking model with no repeated layer:
+FWD CHECKING ... Pass
+BWD CHECKING ... Pass
+Checking model with repeated layer:
+FWD CHECKING ... Pass
+BWD CHECKING ... Pass
+```
+
 
 
