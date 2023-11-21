@@ -7,7 +7,7 @@ MODEL_NAME=$1
 OPT_MODE=$2
 MATH_MODE=$3
 XLA_EXTRAS=$4
-G=$5
+GPUS=$5
 
 if [[ "$OPT_MODE" == "XLA" ]]; then
   export ENABLE_TE=0
@@ -45,9 +45,16 @@ done
 # Use fake datasets
 export VOCAB_PATH="/home/dataset/c4_en_301_5Mexp2_spm.model"
 
+# TODO(kaixih): This is a known hang issue for latency-hiding for TE-FP8.
+# Verify the fix and remove this when 11-21.
+X=true
+if [[ "$OPT_MODE" == "TE" && "$MATH_MODE" == "fp8" ]]; then
+  X=false
+fi
+
 FP8_COMMON="--xla_gpu_enable_reduction_epilogue_fusion=false \
            "
-XLA_COMMON="--xla_gpu_enable_latency_hiding_scheduler=true \
+XLA_COMMON="--xla_gpu_enable_latency_hiding_scheduler=$X \
             --xla_gpu_enable_async_collectives=true \
             --xla_gpu_enable_highest_priority_async_stream=true \
             --xla_gpu_all_reduce_combine_threshold_bytes=51200 \
@@ -56,7 +63,9 @@ XLA_COMMON="--xla_gpu_enable_latency_hiding_scheduler=true \
             --xla_gpu_enable_cublaslt=$USE_CUBLASLT \
             --xla_gpu_enable_triton_gemm=$USE_TRITON_GEMM \
            "
-if [[ "$MATH_MODE" == "fp8" ]]; then
+# TODO(kaixih): This is a known issue that shows extremely long compilation time
+# for XLA-FP8. So, disabling the reduction epilog fusion for now.
+if [[ "$OPT_MODE" == "XLA" && "$MATH_MODE" == "fp8" ]]; then
   XLA_COMMON+=$FP8_COMMON
 fi
 
@@ -96,7 +105,7 @@ if [[ $FAILURE -ne 0 ]]; then
   exit 1
 fi
 
-printf "%-18s %8s %4s %35s %4d %9.3f %8d\n" $MODEL_NAME $OPT_MODE $MATH_MODE $XLA_EXTRAS $G $PERF $WALLTIME
+printf "%-18s %8s %4s %35s %4d %9.3f %8d\n" $MODEL_NAME $OPT_MODE $MATH_MODE $XLA_EXTRAS $GPUS $PERF $WALLTIME
 rm -rf "$TMP_DIR"
 
 
