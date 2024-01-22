@@ -62,6 +62,7 @@ XLA_COMMON="--xla_gpu_enable_latency_hiding_scheduler=$X \
             --xla_gpu_enable_cudnn_fmha=$USE_CUDNN_FMHA \
             --xla_gpu_enable_cublaslt=$USE_CUBLASLT \
             --xla_gpu_enable_triton_gemm=$USE_TRITON_GEMM \
+            --xla_gpu_simplify_all_fp_conversions=true \
            "
 # TODO(kaixih): This is a known issue that shows extremely long compilation time
 # for XLA-FP8. So, disabling the reduction epilog fusion for now.
