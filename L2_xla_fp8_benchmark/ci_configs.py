@@ -1,14 +1,14 @@
 import fiddle as fdl
 from paxml import experiment_registry
 from paxml import tasks_lib
-from paxml.contrib.gpu.scripts_gpu.configs import GPT126M
+from paxml.contrib.gpu.scripts_gpu.configs import GPT126MBase
 from paxml.tasks.lm.params.lm_cloud import SyntheticDataset
 from praxis import layers
 from praxis import pax_fiddle
 from praxis.layers import transformers
 
 @experiment_registry.register
-class GPT5BSynthetic(GPT126M, SyntheticDataset):
+class GPT5BSynthetic(GPT126MBase, SyntheticDataset):
 
   USE_REPEATED_LAYER = True
   ICI_MESH_SHAPE = [1, 8, 1]

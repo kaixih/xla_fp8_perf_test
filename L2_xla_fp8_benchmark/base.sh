@@ -60,6 +60,7 @@ XLA_COMMON="--xla_gpu_enable_latency_hiding_scheduler=$X \
             --xla_gpu_all_reduce_combine_threshold_bytes=51200 \
             --xla_gpu_enable_cudnn_layer_norm=$USE_CUDNN_LN \
             --xla_gpu_enable_cudnn_fmha=$USE_CUDNN_FMHA \
+            --xla_gpu_fused_attention_use_cudnn_rng=true \
             --xla_gpu_enable_cublaslt=$USE_CUBLASLT \
             --xla_gpu_enable_triton_gemm=$USE_TRITON_GEMM \
             --xla_gpu_simplify_all_fp_conversions=true \

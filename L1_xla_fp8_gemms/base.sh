@@ -47,7 +47,8 @@ XLA_COMMON="--xla_gpu_enable_latency_hiding_scheduler=true \
             --xla_gpu_enable_highest_priority_async_stream=true \
             --xla_gpu_all_reduce_combine_threshold_bytes=51200 \
             --xla_gpu_enable_cudnn_layer_norm=true \
-            --xla_gpu_enable_cudnn_fmha=false \
+            --xla_gpu_enable_cudnn_fmha=true \
+            --xla_gpu_fused_attention_use_cudnn_rng=true \
             --xla_gpu_enable_cublaslt=true \
             --xla_gpu_enable_triton_gemm=false \
             --xla_dump_hlo_as_text --xla_dump_to=$XLA_DUMP_DIR \

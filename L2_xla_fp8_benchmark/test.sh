@@ -13,7 +13,7 @@ if [ "$1" == "full" ]; then
   exit 0
 fi
 
-bash base.sh GPT5BSynthetic XLA fp8 cublaslt,cudnn_ln 8
+bash base.sh GPT5BSynthetic XLA fp8 cublaslt,cudnn_ln,cudnn_fmha 8
 bash base.sh GPT5BSynthetic XLA bf16 triton_gemm,cudnn_ln,cudnn_fmha 8
 bash base.sh GPT5BSynthetic TE fp8 none 8
 bash base.sh GPT5BSynthetic TE bf16 none 8
