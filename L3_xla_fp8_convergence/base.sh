@@ -50,8 +50,6 @@ if [[ "$OPT_MODE" == "TE" && "$MATH_MODE" == "fp8" ]]; then
   X=false
 fi
 
-FP8_COMMON="--xla_gpu_enable_reduction_epilogue_fusion=false \
-           "
 XLA_COMMON="--xla_gpu_enable_latency_hiding_scheduler=$X \
             --xla_gpu_enable_async_collectives=true \
             --xla_gpu_enable_highest_priority_async_stream=true \
@@ -63,10 +61,7 @@ XLA_COMMON="--xla_gpu_enable_latency_hiding_scheduler=$X \
             --xla_gpu_enable_triton_gemm=$USE_TRITON_GEMM \
             --xla_gpu_simplify_all_fp_conversions=true \
            "
-# TODO(kaixih): This is a known issue that shows extremely long compilation time
-# for XLA-FP8. So, disabling the reduction epilog fusion for now.
 if [[ "$OPT_MODE" == "XLA" && "$MATH_MODE" == "fp8" ]]; then
-  XLA_COMMON+=$FP8_COMMON
   CKPT_OPTION='--fdl.CHECKPOINT_POLICY="save_nothing"'
 fi
 

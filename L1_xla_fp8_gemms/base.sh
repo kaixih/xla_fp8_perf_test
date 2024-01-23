@@ -40,8 +40,6 @@ fi
 # Use fake datasets
 export VOCAB_PATH="/home/dataset/c4_en_301_5Mexp2_spm.model"
 
-FP8_COMMON="--xla_gpu_enable_reduction_epilogue_fusion=false \
-           "
 XLA_COMMON="--xla_gpu_enable_latency_hiding_scheduler=true \
             --xla_gpu_enable_async_collectives=true \
             --xla_gpu_enable_highest_priority_async_stream=true \
@@ -53,7 +51,6 @@ XLA_COMMON="--xla_gpu_enable_latency_hiding_scheduler=true \
             --xla_gpu_enable_triton_gemm=false \
             --xla_dump_hlo_as_text --xla_dump_to=$XLA_DUMP_DIR \
            "
-XLA_COMMON+=$FP8_COMMON
 export XLA_FLAGS="$XLA_COMMON"
 TMPFILE="$TMPDIR/$(mktemp tmp.XXXXXX)"
 
