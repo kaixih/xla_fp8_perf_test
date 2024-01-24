@@ -1,6 +1,5 @@
 OUTPUT=$(mktemp -d)
 PAXML_DIR=$(dirname `python -c 'import paxml; print(*paxml.__path__)'`)
-cp ci_configs.py ${PAXML_DIR}
 pushd ${PAXML_DIR} > /dev/null
 
 MODEL_NAME=$1
@@ -63,16 +62,23 @@ XLA_COMMON="--xla_gpu_enable_latency_hiding_scheduler=$X \
             --xla_gpu_enable_triton_gemm=$USE_TRITON_GEMM \
             --xla_gpu_simplify_all_fp_conversions=true \
            "
+if [[ "$OPT_MODE" == "XLA" && "$MATH_MODE" == "fp8" ]]; then
+  CKPT_OPTION='--fdl.CHECKPOINT_POLICY="save_nothing"'
+fi
 
 export XLA_FLAGS="$XLA_COMMON"
 SECONDS=0
 TMPFILE="$TMPDIR/$(mktemp tmp.XXXXXX)"
 python -m paxml.main \
-    --fdl_config=ci_configs.$MODEL_NAME \
-    --fdl.PACKED_INPUT=False \
+    --fdl_config=paxml.contrib.gpu.scripts_gpu.configs.$MODEL_NAME \
     --fdl.USE_FP8=$USE_FP8 \
+    '--fdl.ICI_MESH_SHAPE=[1,8,1]' \
+    '--fdl.DCN_MESH_SHAPE=[1,1,1]' \
+    $CKPT_OPTION \
     --job_log_dir=${OUTPUT} \
     --enable_checkpoint_saving=False \
+    --fdl.MAX_STEPS=100 \
+    --fdl.SUMMARY_INTERVAL_STEPS=10 \
     --alsologtostderr >> "$TMPFILE" 2>&1
 
 FAILURE=$?

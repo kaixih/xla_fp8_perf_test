@@ -1,6 +1,5 @@
 OUTPUT=$(mktemp -d)
 PAXML_DIR=$(dirname `python -c 'import paxml; print(*paxml.__path__)'`)
-cp ci_configs.py ${PAXML_DIR}
 cp gen_match_rule.sh ${PAXML_DIR}
 pushd ${PAXML_DIR} > /dev/null
 
@@ -57,13 +56,17 @@ TMPFILE="$TMPDIR/$(mktemp tmp.XXXXXX)"
 if [[ "$GEN_XLA_DUMP" == "y" ]]; then
   rm -rf $XLA_DUMP_DIR
   python -m paxml.main \
-      --fdl_config=ci_configs.GPT5BSynthetic \
-      --fdl.PACKED_INPUT=False \
+      --fdl_config=paxml.contrib.gpu.scripts_gpu.configs.Synthetic5B \
       --fdl.USE_FP8=$USE_FP8 \
+      '--fdl.ICI_MESH_SHAPE=[1,8,1]' \
+      '--fdl.DCN_MESH_SHAPE=[1,1,1]' \
+      '--fdl.CHECKPOINT_POLICY="save_nothing"' \
       --fdl.NUM_LAYERS=$NUM_LAYERS \
       --fdl.USE_REPEATED_LAYER=$USE_REPEATED_LAYER \
       --job_log_dir=${OUTPUT} \
       --enable_checkpoint_saving=False \
+      --fdl.MAX_STEPS=100 \
+      --fdl.SUMMARY_INTERVAL_STEPS=10 \
       --alsologtostderr >> "$TMPFILE" 2>&1
 
   FAILURE=$?

@@ -69,7 +69,7 @@ export XLA_FLAGS="$XLA_COMMON"
 SECONDS=0
 TMPFILE="$TMPDIR/$(mktemp tmp.XXXXXX)"
 python -m paxml.main \
-    --fdl_config=paxml.contrib.gpu.scripts_gpu.configs.GPT5B \
+    --fdl_config=paxml.contrib.gpu.scripts_gpu.configs.Pile5B \
     --fdl.USE_FP8=$USE_FP8 \
     '--fdl.ICI_MESH_SHAPE=[1,8,1]' \
     '--fdl.DCN_MESH_SHAPE=[1,1,1]' \
