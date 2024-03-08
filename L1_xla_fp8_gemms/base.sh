@@ -80,7 +80,7 @@ if [[ "$GEN_XLA_DUMP" == "y" ]]; then
   rm -f "$TMPFILE"
 fi
 
-TARGET_HLO_FILE=$XLA_DUMP_DIR/module_0025.pjit__wrapped_step_fn.sm_9.0_gpu_after_optimizations.txt
+TARGET_HLO_FILE=$(find /xla_dump/ -type f -name 'module_*pjit__wrapped_step_fn.sm_9.0_gpu_after_optimizations.txt' | sort | head -n 1)
 TMPFC="$TMPDIR/$(mktemp tmp.XXXXXX)"
 
 function fetch_matches() {
@@ -105,8 +105,14 @@ function fetch_matches() {
   }'
 }
 
+FILECHECK_CMD=FileCheck-17
+if ! type $FILECHECK_CMD > /dev/null; then
+  echo $FILECHECK_CMD not found. Exiting.
+  exit 1
+fi
+
 bash gen_match_rule.sh $EXPECTED_FP8_GEMMS $PROP_DIRECTION $EXPECTED_OP_NAME
-FileCheck-14 --input-file $TARGET_HLO_FILE match_rules_gen.ll &> $TMPFC
+$FILECHECK_CMD --input-file $TARGET_HLO_FILE match_rules_gen.ll &> $TMPFC
 FAILURE=$?
 
 if [[ $FAILURE -eq 0 ]]; then
