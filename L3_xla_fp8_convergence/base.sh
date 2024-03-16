@@ -18,9 +18,19 @@ else
 fi
 if [[ "$MATH_MODE" == "fp8" ]]; then
   USE_FP8=true
+  USE_FLASH_ATTENTION=false
   export ENABLE_FP8=1
 elif [[ "$MATH_MODE" == "bf16" ]]; then
   USE_FP8=false
+  USE_FLASH_ATTENTION=false
+  export ENABLE_FP8=0
+elif [[ "$MATH_MODE" == "fp8+fa" ]]; then
+  USE_FP8=true
+  USE_FLASH_ATTENTION=true
+  export ENABLE_FP8=1
+elif [[ "$MATH_MODE" == "bf16+fa" ]]; then
+  USE_FP8=false
+  USE_FLASH_ATTENTION=true
   export ENABLE_FP8=0
 else
   echo TRAINING SCRIPT FAILED: Unsupported MATH_MODE: $MATH_MODE
@@ -50,6 +60,7 @@ if [[ "$OPT_MODE" == "TE" && "$MATH_MODE" == "fp8" ]]; then
   X=false
 fi
 
+XLA_DUMP_DIR=/xla_dump
 XLA_COMMON="--xla_gpu_enable_latency_hiding_scheduler=$X \
             --xla_gpu_enable_async_collectives=true \
             --xla_gpu_enable_highest_priority_async_stream=true \
@@ -60,7 +71,10 @@ XLA_COMMON="--xla_gpu_enable_latency_hiding_scheduler=$X \
             --xla_gpu_enable_cublaslt=$USE_CUBLASLT \
             --xla_gpu_enable_triton_gemm=$USE_TRITON_GEMM \
             --xla_gpu_simplify_all_fp_conversions=true \
+            --xla_dump_hlo_pass_re=.* \
+            --xla_dump_hlo_as_text --xla_dump_to=$XLA_DUMP_DIR \
            "
+echo XLA DUMP PATH $XLA_DUMP_DIR
 if [[ "$OPT_MODE" == "XLA" && "$MATH_MODE" == "fp8" ]]; then
   CKPT_OPTION='--fdl.CHECKPOINT_POLICY="save_nothing"'
 fi
@@ -71,21 +85,22 @@ TMPFILE="$TMPDIR/$(mktemp tmp.XXXXXX)"
 python -m paxml.main \
     --fdl_config=paxml.contrib.gpu.scripts_gpu.configs.Pile5B \
     --fdl.USE_FP8=$USE_FP8 \
+    --fdl.USE_CUDNN_FLASH_ATTENTION=$USE_FLASH_ATTENTION \
     '--fdl.ICI_MESH_SHAPE=[1,8,1]' \
     '--fdl.DCN_MESH_SHAPE=[1,1,1]' \
     $CKPT_OPTION \
     --job_log_dir=${OUTPUT} \
     --tfds_data_dir=/datasets/the-pile-tfds_fraction/ \
     --enable_checkpoint_saving=False \
-    --fdl.MAX_STEPS=1500 \
-    --fdl.SUMMARY_INTERVAL_STEPS=100 \
+    --fdl.MAX_STEPS=100 \
+    --fdl.SUMMARY_INTERVAL_STEPS=10 \
     --alsologtostderr >> "$TMPFILE" 2>&1
 
 
 FAILURE=$?
 if [[ $FAILURE -eq 0 ]]; then
   PERF=$(cat "$TMPFILE" | \
-         grep 'Setting task status: step = 1500,.*steps/sec' | \
+         grep 'Setting task status: step = 100,.*steps/sec' | \
          awk '{
            for(i = 1; i <= NF; i++) {
              found = match($i, /steps\/sec/)
@@ -99,9 +114,9 @@ if [[ $FAILURE -eq 0 ]]; then
   [[ -z "$PERF" ]] && FAILURE=1
 fi
 if [[ $FAILURE -eq 0 ]]; then
-  cat "$TMPFILE" | grep 'training'
+  cat "$TMPFILE" | grep 'training' | grep -o "\[PAX STATUS.*"
   LOSS=$(cat "$TMPFILE" | \
-         grep 'step_i: 1500,.*training loss:' | \
+         grep 'step_i: 100,.*training loss:' | \
          awk '{
            for(i = 1; i <= NF; i++) {
              found = match($i, /loss:/)
@@ -118,11 +133,12 @@ WALLTIME=$SECONDS
 if [[ $FAILURE -ne 0 ]]; then
   cat "$TMPFILE"
   echo TRAINING SCRIPT FAILED
-  rm -f "$TMPFILE"
+  #rm -f "$TMPFILE"
   exit 1
 fi
+echo $TMPFILE
 
-printf "%-18s %8s %4s %35s %4d %9.3f %4.3f %8d\n" $MODEL_NAME $OPT_MODE $MATH_MODE $XLA_EXTRAS $GPUS $PERF $LOSS $WALLTIME
-rm -rf "$TMP_DIR"
+printf "%-18s %8s %4s %20s %4d %9.3f %4.3f %8d\n" $MODEL_NAME $OPT_MODE $MATH_MODE $XLA_EXTRAS $GPUS $PERF $LOSS $WALLTIME
+#rm -rf "$TMPFILE"
 
 
