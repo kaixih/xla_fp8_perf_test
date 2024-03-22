@@ -3,38 +3,31 @@ PAXML_DIR=$(dirname `python -c 'import paxml; print(*paxml.__path__)'`)
 pushd ${PAXML_DIR} > /dev/null
 
 MODEL_NAME=$1
-OPT_MODE=$2
+BACKEND=$2
 MATH_MODE=$3
-XLA_EXTRAS=$4
-GPUS=$5
+SDPA=$4
+XLA_EXTRAS=$5
+GPUS=$6
 
-if [[ "$OPT_MODE" == "XLA" ]]; then
+if [[ "$BACKEND" == "XLA" ]]; then
   export ENABLE_TE=0
-elif [[ "$OPT_MODE" == "TE" ]]; then
+elif [[ "$BACKEND" == "TE" ]]; then
   export ENABLE_TE=1
 else
-  echo TRAINING SCRIPT FAILED: Unsupported OPT_MODE: $OPT_MODE
+  echo TRAINING SCRIPT FAILED: Unsupported BACKEND: $BACKEND
   exit 1
 fi
-if [[ "$MATH_MODE" == "fp8" ]]; then
+if [[ "$MATH_MODE" == *"fp8"* ]]; then
   USE_FP8=true
-  USE_FLASH_ATTENTION=false
   export ENABLE_FP8=1
-elif [[ "$MATH_MODE" == "bf16" ]]; then
-  USE_FP8=false
-  USE_FLASH_ATTENTION=false
-  export ENABLE_FP8=0
-elif [[ "$MATH_MODE" == "fp8+fa" ]]; then
-  USE_FP8=true
-  USE_FLASH_ATTENTION=true
-  export ENABLE_FP8=1
-elif [[ "$MATH_MODE" == "bf16+fa" ]]; then
-  USE_FP8=false
-  USE_FLASH_ATTENTION=true
-  export ENABLE_FP8=0
 else
-  echo TRAINING SCRIPT FAILED: Unsupported MATH_MODE: $MATH_MODE
-  exit 1
+  USE_FP8=false
+  export ENABLE_FP8=0
+fi
+if [[ "$SDPA" == *"FA"* ]]; then
+  USE_FLASH_ATTENTION=true
+else
+  USE_FLASH_ATTENTION=false
 fi
 USE_CUBLASLT="false"
 USE_CUDNN_LN="false"
@@ -57,7 +50,7 @@ export VOCAB_PATH="/home/dataset/c4_en_301_5Mexp2_spm.model"
 # TODO(kaixih): This is a known hang issue for latency-hiding for TE-FP8.
 # Verify the fix and remove this when 11-21.
 X=true
-if [[ "$OPT_MODE" == "TE" && "$MATH_MODE" == "fp8" ]]; then
+if [[ "$BACKEND" == "TE" && "$MATH_MODE" == "fp8" ]]; then
   X=false
 fi
 
@@ -74,7 +67,7 @@ XLA_COMMON="--xla_gpu_enable_latency_hiding_scheduler=$X \
             --xla_gpu_simplify_all_fp_conversions=true \
             --xla_dump_hlo_as_text --xla_dump_to=$XLA_DUMP_DIR \
            "
-if [[ "$OPT_MODE" == "XLA" && "$MATH_MODE" == "fp8" ]]; then
+if [[ "$BACKEND" == "XLA" && "$MATH_MODE" == "fp8" ]]; then
   CKPT_OPTION='--fdl.CHECKPOINT_POLICY="save_nothing"'
 fi
 
@@ -115,13 +108,11 @@ WALLTIME=$SECONDS
 if [[ $FAILURE -ne 0 ]]; then
   cat "$TMPFILE"
   echo TRAINING SCRIPT FAILED
-  #rm -f "$TMPFILE"
-  echo "XXX $TMPFILE"
+  rm -f "$TMPFILE"
   exit 1
 fi
 
-printf "%-18s %8s %4s %35s %4d %9.3f %8d\n" $MODEL_NAME $OPT_MODE $MATH_MODE $XLA_EXTRAS $GPUS $PERF $WALLTIME
-#rm -rf "$TMP_DIR"
-echo "XXX $TMPFILE"
+printf "%-18s %8s %4s %4s %30s %4d %9.3f %8d\n" $MODEL_NAME $BACKEND $MATH_MODE $SDPA $XLA_EXTRAS $GPUS $PERF $WALLTIME
+rm -rf "$TMP_DIR"
 
 
