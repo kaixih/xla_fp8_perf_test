@@ -78,6 +78,7 @@ if [[ "$BACKEND" == "XLA" && "$MATH_MODE" == "fp8" ]]; then
   CKPT_OPTION='--fdl.CHECKPOINT_POLICY="save_nothing"'
 fi
 
+TOTAL_STEPS=1500
 export XLA_FLAGS="$XLA_COMMON"
 SECONDS=0
 TMPFILE="$TMPDIR/$(mktemp tmp.XXXXXX)"
@@ -91,15 +92,15 @@ python -m paxml.main \
     --job_log_dir=${OUTPUT} \
     --tfds_data_dir=/datasets/the-pile-tfds_fraction/ \
     --enable_checkpoint_saving=False \
-    --fdl.MAX_STEPS=100 \
-    --fdl.SUMMARY_INTERVAL_STEPS=10 \
+    --fdl.MAX_STEPS=$TOTAL_STEPS \
+    --fdl.SUMMARY_INTERVAL_STEPS=100 \
     --alsologtostderr >> "$TMPFILE" 2>&1
 
 
 FAILURE=$?
 if [[ $FAILURE -eq 0 ]]; then
   PERF=$(cat "$TMPFILE" | \
-         grep 'Setting task status: step = 100,.*steps/sec' | \
+         grep "Setting task status: step = $TOTAL_STEPS,.*steps/sec" | \
          awk '{
            for(i = 1; i <= NF; i++) {
              found = match($i, /steps\/sec/)
@@ -115,7 +116,7 @@ fi
 if [[ $FAILURE -eq 0 ]]; then
   mapfile -t LOSS_CURVE < <(cat "$TMPFILE" | grep 'training' | grep -o "\[PAX STATUS.*")
   LOSS=$(cat "$TMPFILE" | \
-         grep 'step_i: 100,.*training loss:' | \
+         grep "step_i: $TOTAL_STEPS,.*training loss:" | \
          awk '{
            for(i = 1; i <= NF; i++) {
              found = match($i, /loss:/)
