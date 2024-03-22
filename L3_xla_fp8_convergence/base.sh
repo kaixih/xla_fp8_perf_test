@@ -3,38 +3,31 @@ PAXML_DIR=$(dirname `python -c 'import paxml; print(*paxml.__path__)'`)
 pushd ${PAXML_DIR} > /dev/null
 
 MODEL_NAME=$1
-OPT_MODE=$2
+BACKEND=$2
 MATH_MODE=$3
-XLA_EXTRAS=$4
-GPUS=$5
+SDPA=$4
+XLA_EXTRAS=$5
+GPUS=$6
 
-if [[ "$OPT_MODE" == "XLA" ]]; then
+if [[ "$BACKEND" == "XLA" ]]; then
   export ENABLE_TE=0
-elif [[ "$OPT_MODE" == "TE" ]]; then
+elif [[ "$BACKEND" == "TE" ]]; then
   export ENABLE_TE=1
 else
-  echo TRAINING SCRIPT FAILED: Unsupported OPT_MODE: $OPT_MODE
+  echo TRAINING SCRIPT FAILED: Unsupported BACKEND: $BACKEND
   exit 1
 fi
-if [[ "$MATH_MODE" == "fp8" ]]; then
+if [[ "$MATH_MODE" == *"fp8"* ]]; then
   USE_FP8=true
-  USE_FLASH_ATTENTION=false
   export ENABLE_FP8=1
-elif [[ "$MATH_MODE" == "bf16" ]]; then
-  USE_FP8=false
-  USE_FLASH_ATTENTION=false
-  export ENABLE_FP8=0
-elif [[ "$MATH_MODE" == "fp8+fa" ]]; then
-  USE_FP8=true
-  USE_FLASH_ATTENTION=true
-  export ENABLE_FP8=1
-elif [[ "$MATH_MODE" == "bf16+fa" ]]; then
-  USE_FP8=false
-  USE_FLASH_ATTENTION=true
-  export ENABLE_FP8=0
 else
-  echo TRAINING SCRIPT FAILED: Unsupported MATH_MODE: $MATH_MODE
-  exit 1
+  USE_FP8=false
+  export ENABLE_FP8=0
+fi
+if [[ "$SDPA" == *"FA"* ]]; then
+  USE_FLASH_ATTENTION=true
+else
+  USE_FLASH_ATTENTION=false
 fi
 USE_CUBLASLT="false"
 USE_CUDNN_LN="false"
@@ -56,7 +49,7 @@ export VOCAB_PATH=/datasets/google_c4_spm/c4_en_301_5Mexp2_spm.model
 # TODO(kaixih): This is a known hang issue for latency-hiding for TE-FP8.
 # Verify the fix and remove this when 11-21.
 X=true
-if [[ "$OPT_MODE" == "TE" && "$MATH_MODE" == "fp8" ]]; then
+if [[ "$BACKEND" == "TE" && "$MATH_MODE" == "fp8" ]]; then
   X=false
 fi
 
@@ -71,11 +64,17 @@ XLA_COMMON="--xla_gpu_enable_latency_hiding_scheduler=$X \
             --xla_gpu_enable_cublaslt=$USE_CUBLASLT \
             --xla_gpu_enable_triton_gemm=$USE_TRITON_GEMM \
             --xla_gpu_simplify_all_fp_conversions=true \
-            --xla_dump_hlo_pass_re=.* \
-            --xla_dump_hlo_as_text --xla_dump_to=$XLA_DUMP_DIR \
            "
-echo XLA DUMP PATH $XLA_DUMP_DIR
-if [[ "$OPT_MODE" == "XLA" && "$MATH_MODE" == "fp8" ]]; then
+
+DEBUG=1
+if [[ "$DEBUG" == "1" ]]; then
+  XLA_COMMON+="--xla_dump_hlo_pass_re=.* \
+               --xla_dump_hlo_as_text --xla_dump_to=$XLA_DUMP_DIR \
+              "
+  echo XLA DUMP TO PATH $XLA_DUMP_DIR
+fi
+
+if [[ "$BACKEND" == "XLA" && "$MATH_MODE" == "fp8" ]]; then
   CKPT_OPTION='--fdl.CHECKPOINT_POLICY="save_nothing"'
 fi
 
@@ -114,7 +113,7 @@ if [[ $FAILURE -eq 0 ]]; then
   [[ -z "$PERF" ]] && FAILURE=1
 fi
 if [[ $FAILURE -eq 0 ]]; then
-  cat "$TMPFILE" | grep 'training' | grep -o "\[PAX STATUS.*"
+  mapfile -t LOSS_CURVE < <(cat "$TMPFILE" | grep 'training' | grep -o "\[PAX STATUS.*")
   LOSS=$(cat "$TMPFILE" | \
          grep 'step_i: 100,.*training loss:' | \
          awk '{
@@ -133,12 +132,19 @@ WALLTIME=$SECONDS
 if [[ $FAILURE -ne 0 ]]; then
   cat "$TMPFILE"
   echo TRAINING SCRIPT FAILED
-  #rm -f "$TMPFILE"
+  if [[ "$DEBUG" == "0" ]]; then
+    rm -f "$TMPFILE"
+  fi
   exit 1
 fi
 echo $TMPFILE
 
-printf "%-18s %8s %4s %20s %4d %9.3f %4.3f %8d\n" $MODEL_NAME $OPT_MODE $MATH_MODE $XLA_EXTRAS $GPUS $PERF $LOSS $WALLTIME
-#rm -rf "$TMPFILE"
+printf "%-18s %8s %4s %4s %20s %4d %9.3f %4.3f %8d\n" $MODEL_NAME $BACKEND $MATH_MODE $SDPA $XLA_EXTRAS $GPUS $PERF $LOSS $WALLTIME
+for line in "${LOSS_CURVE[@]}"; do
+  echo $line
+done
+if [[ "$DEBUG" == "0" ]]; then
+  rm -rf "$TMPFILE"
+fi
 
 
