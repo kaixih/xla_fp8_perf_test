@@ -56,7 +56,6 @@ fi
 
 XLA_DUMP_DIR=$TMPDIR/xla_dump
 XLA_COMMON="--xla_gpu_enable_latency_hiding_scheduler=$X \
-            --xla_gpu_enable_async_collectives=true \
             --xla_gpu_enable_highest_priority_async_stream=true \
             --xla_gpu_all_reduce_combine_threshold_bytes=51200 \
             --xla_gpu_enable_cudnn_layer_norm=$USE_CUDNN_LN \
@@ -64,7 +63,6 @@ XLA_COMMON="--xla_gpu_enable_latency_hiding_scheduler=$X \
             --xla_gpu_fused_attention_use_cudnn_rng=true \
             --xla_gpu_enable_cublaslt=$USE_CUBLASLT \
             --xla_gpu_enable_triton_gemm=$USE_TRITON_GEMM \
-            --xla_gpu_simplify_all_fp_conversions=true \
             --xla_dump_hlo_as_text --xla_dump_to=$XLA_DUMP_DIR \
            "
 if [[ "$BACKEND" == "XLA" && "$MATH_MODE" == "fp8" ]]; then
