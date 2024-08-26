@@ -6,8 +6,7 @@ MODEL_NAME=$1
 BACKEND=$2
 MATH_MODE=$3
 SDPA=$4
-XLA_EXTRAS=$5
-GPUS=$6
+GPUS=$5
 
 if [[ "$BACKEND" == "XLA" ]]; then
   export ENABLE_TE=0
@@ -29,39 +28,11 @@ if [[ "$SDPA" == *"FA"* ]]; then
 else
   USE_FLASH_ATTENTION=false
 fi
-USE_CUBLASLT="false"
-USE_CUDNN_LN="false"
-USE_CUDNN_FMHA="false"
-USE_TRITON_GEMM="false"
-for F in $(echo $XLA_EXTRAS | sed 's/,/ /g'); do
-  case "$F" in
-    cublaslt) USE_CUBLASLT="true" ;;
-    cudnn_ln) USE_CUDNN_LN="true" ;;
-    cudnn_fmha) USE_CUDNN_FMHA="true" ;;
-    triton_gemm) USE_TRITON_GEMM="true" ;;
-    none) ;;
-    *) echo Invalid XLA_EXTRAS $F; exit 1 ;;
-  esac
-done
 
 export VOCAB_PATH=/datasets/google_c4_spm/c4_en_301_5Mexp2_spm.model
 
-# TODO(kaixih): This is a known hang issue for latency-hiding for TE-FP8.
-# Verify the fix and remove this when 11-21.
-X=true
-if [[ "$BACKEND" == "TE" && "$MATH_MODE" == "fp8" ]]; then
-  X=false
-fi
-
 XLA_DUMP_DIR=/xla_dump
-XLA_COMMON="--xla_gpu_enable_latency_hiding_scheduler=$X \
-            --xla_gpu_enable_highest_priority_async_stream=true \
-            --xla_gpu_all_reduce_combine_threshold_bytes=51200 \
-            --xla_gpu_enable_cudnn_layer_norm=$USE_CUDNN_LN \
-            --xla_gpu_enable_cudnn_fmha=$USE_CUDNN_FMHA \
-            --xla_gpu_fused_attention_use_cudnn_rng=true \
-            --xla_gpu_enable_cublaslt=$USE_CUBLASLT \
-            --xla_gpu_enable_triton_gemm=$USE_TRITON_GEMM \
+XLA_COMMON="--xla_gpu_enable_triton_gemm=false \
            "
 
 DEBUG=1
@@ -70,10 +41,6 @@ if [[ "$DEBUG" == "1" ]]; then
                --xla_dump_hlo_as_text --xla_dump_to=$XLA_DUMP_DIR \
               "
   echo XLA DUMP TO PATH $XLA_DUMP_DIR
-fi
-
-if [[ "$BACKEND" == "XLA" && "$MATH_MODE" == "fp8" ]]; then
-  CKPT_OPTION='--fdl.CHECKPOINT_POLICY="save_nothing"'
 fi
 
 TOTAL_STEPS=1500
@@ -86,7 +53,7 @@ python -m paxml.main \
     --fdl.USE_CUDNN_FLASH_ATTENTION=$USE_FLASH_ATTENTION \
     '--fdl.ICI_MESH_SHAPE=[1,8,1]' \
     '--fdl.DCN_MESH_SHAPE=[1,1,1]' \
-    $CKPT_OPTION \
+    '--fdl.CHECKPOINT_POLICY="save_nothing"' \
     --job_log_dir=${OUTPUT} \
     --tfds_data_dir=/datasets/the-pile-tfds_fraction/ \
     --enable_checkpoint_saving=False \
@@ -136,9 +103,10 @@ if [[ $FAILURE -ne 0 ]]; then
   fi
   exit 1
 fi
-echo $TMPFILE
+echo LOG STORED TO $TMPFILE
 
-printf "%-18s %8s %4s %4s %20s %4d %9.3f %4.3f %8d\n" $MODEL_NAME $BACKEND $MATH_MODE $SDPA $XLA_EXTRAS $GPUS $PERF $LOSS $WALLTIME
+printf "%-18s %8s %4s %4s %20s %4s %9s %5s %8s\n" NETWORK BACKEND MATH SDPA XLA_EXTRAS GPUs STEPS/SEC LOSS WALLSECS
+printf "%-18s %8s %4s %4s %4d %9.3f %5.3f %8d\n" $MODEL_NAME $BACKEND $MATH_MODE $SDPA $GPUS $PERF $LOSS $WALLTIME
 for line in "${LOSS_CURVE[@]}"; do
   echo $line
 done
