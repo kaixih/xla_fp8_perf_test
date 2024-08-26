@@ -40,6 +40,7 @@ fi
 export VOCAB_PATH="/home/dataset/c4_en_301_5Mexp2_spm.model"
 
 XLA_COMMON="--xla_gpu_enable_triton_gemm=false \
+            --xla_dump_hlo_pass_re=.* \
             --xla_dump_hlo_as_text --xla_dump_to=$XLA_DUMP_DIR \
            "
 export XLA_FLAGS="$XLA_COMMON"
@@ -72,7 +73,7 @@ if [[ "$GEN_XLA_DUMP" == "y" ]]; then
   rm -f "$TMPFILE"
 fi
 
-TARGET_HLO_FILE=$(find /xla_dump/ -type f -name 'module_*pjit__wrapped_step_fn.sm_9.0_gpu_after_optimizations.txt' | sort | head -n 1)
+TARGET_HLO_FILE=$(find ${XLA_DUMP_DIR} -type f -name 'module_*pjit__wrapped_step_fn.sm_9.0_gpu_after_optimizations.txt' | sort | head -n 1)
 TMPFC="$TMPDIR/$(mktemp tmp.XXXXXX)"
 
 function fetch_matches() {

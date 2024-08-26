@@ -105,7 +105,7 @@ if [[ $FAILURE -ne 0 ]]; then
 fi
 echo LOG STORED TO $TMPFILE
 
-printf "%-18s %8s %4s %4s %20s %4s %9s %5s %8s\n" NETWORK BACKEND MATH SDPA XLA_EXTRAS GPUs STEPS/SEC LOSS WALLSECS
+printf "%-18s %8s %4s %4s %4s %9s %5s %8s\n" NETWORK BACKEND MATH SDPA XLA_EXTRAS GPUs STEPS/SEC LOSS WALLSECS
 printf "%-18s %8s %4s %4s %4d %9.3f %5.3f %8d\n" $MODEL_NAME $BACKEND $MATH_MODE $SDPA $GPUS $PERF $LOSS $WALLTIME
 for line in "${LOSS_CURVE[@]}"; do
   echo $line
