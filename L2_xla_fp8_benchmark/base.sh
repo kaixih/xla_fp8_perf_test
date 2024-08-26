@@ -6,8 +6,7 @@ MODEL_NAME=$1
 BACKEND=$2
 MATH_MODE=$3
 SDPA=$4
-XLA_EXTRAS=$5
-GPUS=$6
+GPUS=$5
 
 if [[ "$BACKEND" == "XLA" ]]; then
   export ENABLE_TE=0
@@ -29,56 +28,32 @@ if [[ "$SDPA" == *"FA"* ]]; then
 else
   USE_FLASH_ATTENTION=false
 fi
-USE_CUBLASLT="false"
-USE_CUDNN_LN="false"
-USE_CUDNN_FMHA="false"
-USE_TRITON_GEMM="false"
-for F in $(echo $XLA_EXTRAS | sed 's/,/ /g'); do
-  case "$F" in
-    cublaslt) USE_CUBLASLT="true" ;;
-    cudnn_ln) USE_CUDNN_LN="true" ;;
-    cudnn_fmha) USE_CUDNN_FMHA="true" ;;
-    triton_gemm) USE_TRITON_GEMM="true" ;;
-    none) ;;
-    *) echo Invalid XLA_EXTRAS $F; exit 1 ;;
-  esac
-done
 
 # Use fake datasets
 export VOCAB_PATH="/home/dataset/c4_en_301_5Mexp2_spm.model"
 
-# TODO(kaixih): This is a known hang issue for latency-hiding for TE-FP8.
-# Verify the fix and remove this when 11-21.
-X=true
-if [[ "$BACKEND" == "TE" && "$MATH_MODE" == "fp8" ]]; then
-  X=false
-fi
-
 XLA_DUMP_DIR=$TMPDIR/xla_dump
-XLA_COMMON="--xla_gpu_enable_latency_hiding_scheduler=$X \
-            --xla_gpu_enable_highest_priority_async_stream=true \
-            --xla_gpu_all_reduce_combine_threshold_bytes=51200 \
-            --xla_gpu_enable_cudnn_layer_norm=$USE_CUDNN_LN \
-            --xla_gpu_enable_cudnn_fmha=$USE_CUDNN_FMHA \
-            --xla_gpu_fused_attention_use_cudnn_rng=true \
-            --xla_gpu_enable_cublaslt=$USE_CUBLASLT \
-            --xla_gpu_enable_triton_gemm=$USE_TRITON_GEMM \
+XLA_COMMON="--xla_gpu_enable_triton_gemm=false \
             --xla_dump_hlo_as_text --xla_dump_to=$XLA_DUMP_DIR \
            "
-if [[ "$BACKEND" == "XLA" && "$MATH_MODE" == "fp8" ]]; then
-  CKPT_OPTION='--fdl.CHECKPOINT_POLICY="save_nothing"'
+
+if [[ "$MODEL_NAME" = "Synthetic5B" ]]; then
+  MODEL_PATH="paxml.contrib.gpu.scripts_gpu.configs"
+elif [[ "$MODEL_NAME" = "Llama2_7B" ]]; then
+  MODEL_PATH="paxml.tasks.lm.params.nvidia"
 fi
 
 export XLA_FLAGS="$XLA_COMMON"
 SECONDS=0
 TMPFILE="$TMPDIR/$(mktemp tmp.XXXXXX)"
 python -u -m paxml.main \
-    --fdl_config=paxml.contrib.gpu.scripts_gpu.configs.$MODEL_NAME \
+    --fdl_config=$MODEL_PATH.$MODEL_NAME \
     --fdl.USE_FP8=$USE_FP8 \
     --fdl.USE_CUDNN_FLASH_ATTENTION=$USE_FLASH_ATTENTION \
+    --fdl.USE_REPEATED_LAYER=1 \
     '--fdl.ICI_MESH_SHAPE=[1,8,1]' \
     '--fdl.DCN_MESH_SHAPE=[1,1,1]' \
-    $CKPT_OPTION \
+    '--fdl.CHECKPOINT_POLICY="save_nothing"' \
     --job_log_dir=${OUTPUT} \
     --enable_checkpoint_saving=False \
     --fdl.MAX_STEPS=100 \
@@ -110,7 +85,7 @@ if [[ $FAILURE -ne 0 ]]; then
   exit 1
 fi
 
-printf "%-18s %8s %4s %4s %30s %4d %9.3f %8d\n" $MODEL_NAME $BACKEND $MATH_MODE $SDPA $XLA_EXTRAS $GPUS $PERF $WALLTIME
+printf "%-18s %8s %4s %4s %4d %9.3f %8d\n" $MODEL_NAME $BACKEND $MATH_MODE $SDPA $GPUS $PERF $WALLTIME
 rm -rf "$TMP_DIR"
 
 

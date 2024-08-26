@@ -1,5 +1,8 @@
 # XLA-FP8 Tests
 
+Note, the following results are obtained from
+`ghcr.io/nvidia/jax:pax-2024-08-06`.
+
 ## Functionality test
 ```
 $ cd xla_fp8_perf_test/L1_xla_fp8_gemms
@@ -12,27 +15,27 @@ FWD CHECKING ... Pass
 BWD CHECKING ... Pass
 ```
 
-
 ## Performance test
+
 ```
 $ cd xla_fp8_perf_test/L2_xla_fp8_benchmark
 # base test.sh
-NETWORK             BACKEND MATH SDPA                     XLA_EXTRAS GPUs STEPS/SEC WALLSECS
-Synthetic5B             XLA  fp8   NA              cublaslt,cudnn_ln    8     0.788      202
-Synthetic5B             XLA  fp8   FA              cublaslt,cudnn_ln    8     1.126      162
-Synthetic5B             XLA bf16   NA           triton_gemm,cudnn_ln    8     0.647      227
-Synthetic5B             XLA bf16   FA           triton_gemm,cudnn_ln    8     0.858      197
+NETWORK             BACKEND MATH SDPA GPUs STEPS/SEC WALLSECS
+Synthetic5B             XLA  fp8   NA    8     0.790      177
+Synthetic5B             XLA  fp8   FA    8     1.110      147
+Synthetic5B             XLA bf16   NA    8     0.574      218
+Synthetic5B             XLA bf16   FA    8     0.780      178
 
 ```
 
 ## Convergence test
 ```
 root@d6a0f3181d5a:/home/repo/xla_fp8_perf_test/L3_xla_fp8_convergence# bash test.sh
-NETWORK             BACKEND MATH SDPA           XLA_EXTRAS GPUs STEPS/SEC LOSS WALLSECS
-Running direct cudnn attention
+Running cudnn flash attention
 XLA DUMP TO PATH /xla_dump
-/tmp.uwBN5s
-GPT5B                   XLA  fp8   FA    cublaslt,cudnn_ln    8     1.028 3.847     1619
+LOG STORED TO /tmp.uwBN5s
+NETWORK             BACKEND MATH SDPA GPUs STEPS/SEC  LOSS  WALLSECS
+GPT5B                   XLA  fp8   FA    8     1.028 3.847      1619
 [PAX STATUS]: Starting training loop.
 [PAX STATUS] step_i: 100, training loss: 6.5196137
 [PAX STATUS] step_i: 200, training loss: 5.92186
