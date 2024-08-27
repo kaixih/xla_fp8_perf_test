@@ -8,6 +8,10 @@ if [[ -z "$1" ]]; then
   bash base.sh n 1 True BWD 8
 fi
 
+if [[ "$1" == "debug" ]]; then
+  bash base.sh y 1 False FWD 4
+fi
+
 if [ "$1" == "verbose" ]; then
   echo "Checking model with no repeated layer (verbose):"
   bash base.sh y 1 False FWD 1 QKV
