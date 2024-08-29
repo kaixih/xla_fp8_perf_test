@@ -1,7 +1,7 @@
 # XLA-FP8 Tests
 
-Note, the following results are obtained from
-`ghcr.io/nvidia/jax:pax-2024-08-06`.
+Note, the following results are collected from
+`ghcr.io/nvidia/jax:upstream-pax-2024-08-28`.
 
 ## Functionality test
 ```
