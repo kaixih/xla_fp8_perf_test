@@ -1,6 +1,7 @@
 OUTPUT=$(mktemp -d)
 PAXML_DIR=$(dirname `python -c 'import paxml; print(*paxml.__path__)'`)
 cp gen_match_rule.sh ${PAXML_DIR}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 pushd ${PAXML_DIR} > /dev/null
 
 export ENABLE_TE=0
@@ -39,10 +40,10 @@ fi
 # Use fake datasets
 export VOCAB_PATH="/home/dataset/c4_en_301_5Mexp2_spm.model"
 
-XLA_COMMON="--xla_gpu_enable_triton_gemm=false \
-            --xla_dump_hlo_pass_re=.* \
-            --xla_dump_hlo_as_text --xla_dump_to=$XLA_DUMP_DIR \
-           "
+source $SCRIPT_DIR/../env.sh
+XLA_COMMON+="--xla_dump_hlo_pass_re=.* \
+             --xla_dump_hlo_as_text --xla_dump_to=$XLA_DUMP_DIR \
+            "
 export XLA_FLAGS="$XLA_COMMON"
 TMPFILE="$TMPDIR/$(mktemp tmp.XXXXXX)"
 

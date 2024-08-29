@@ -1,5 +1,6 @@
 OUTPUT=$(mktemp -d)
 PAXML_DIR=$(dirname `python -c 'import paxml; print(*paxml.__path__)'`)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 pushd ${PAXML_DIR} > /dev/null
 
 MODEL_NAME=$1
@@ -33,9 +34,8 @@ fi
 export VOCAB_PATH="/home/dataset/c4_en_301_5Mexp2_spm.model"
 
 XLA_DUMP_DIR=$TMPDIR/xla_dump
-XLA_COMMON="--xla_gpu_enable_triton_gemm=false \
-            --xla_dump_hlo_as_text --xla_dump_to=$XLA_DUMP_DIR \
-           "
+source $SCRIPT_DIR/../env.sh
+XLA_COMMON+="--xla_dump_hlo_as_text --xla_dump_to=$XLA_DUMP_DIR"
 
 if [[ "$MODEL_NAME" = "Synthetic5B" ]]; then
   MODEL_PATH="paxml.contrib.gpu.scripts_gpu.configs"

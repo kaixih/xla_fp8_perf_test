@@ -1,5 +1,6 @@
 OUTPUT=$(mktemp -d)
 PAXML_DIR=$(dirname `python -c 'import paxml; print(*paxml.__path__)'`)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 pushd ${PAXML_DIR} > /dev/null
 
 MODEL_NAME=$1
@@ -32,8 +33,7 @@ fi
 export VOCAB_PATH=/datasets/google_c4_spm/c4_en_301_5Mexp2_spm.model
 
 XLA_DUMP_DIR=/xla_dump
-XLA_COMMON="--xla_gpu_enable_triton_gemm=false \
-           "
+source $SCRIPT_DIR/../env.sh
 
 DEBUG=1
 if [[ "$DEBUG" == "1" ]]; then
