@@ -35,7 +35,7 @@ export VOCAB_PATH=/datasets/google_c4_spm/c4_en_301_5Mexp2_spm.model
 XLA_DUMP_DIR=/xla_dump
 source $SCRIPT_DIR/../env.sh
 
-DEBUG=1
+DEBUG=0
 if [[ "$DEBUG" == "1" ]]; then
   XLA_COMMON+="--xla_dump_hlo_pass_re=.* \
                --xla_dump_hlo_as_text --xla_dump_to=$XLA_DUMP_DIR \
@@ -105,7 +105,7 @@ if [[ $FAILURE -ne 0 ]]; then
 fi
 echo LOG STORED TO $TMPFILE
 
-printf "%-18s %8s %4s %4s %4s %9s %5s %8s\n" NETWORK BACKEND MATH SDPA XLA_EXTRAS GPUs STEPS/SEC LOSS WALLSECS
+printf "%-18s %8s %4s %4s %4s %9s %5s %8s\n" NETWORK BACKEND MATH SDPA GPUs STEPS/SEC LOSS WALLSECS
 printf "%-18s %8s %4s %4s %4d %9.3f %5.3f %8d\n" $MODEL_NAME $BACKEND $MATH_MODE $SDPA $GPUS $PERF $LOSS $WALLTIME
 for line in "${LOSS_CURVE[@]}"; do
   echo $line
