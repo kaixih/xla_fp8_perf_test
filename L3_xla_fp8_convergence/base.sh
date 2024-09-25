@@ -43,7 +43,7 @@ if [[ "$DEBUG" == "1" ]]; then
   echo XLA DUMP TO PATH $XLA_DUMP_DIR
 fi
 
-TOTAL_STEPS=1500
+TOTAL_STEPS=100
 export XLA_FLAGS="$XLA_COMMON"
 SECONDS=0
 TMPFILE="$TMPDIR/$(mktemp tmp.XXXXXX)"
@@ -58,7 +58,7 @@ python -m paxml.main \
     --tfds_data_dir=/datasets/the-pile-tfds_fraction/ \
     --enable_checkpoint_saving=False \
     --fdl.MAX_STEPS=$TOTAL_STEPS \
-    --fdl.SUMMARY_INTERVAL_STEPS=100 \
+    --fdl.SUMMARY_INTERVAL_STEPS=10 \
     --alsologtostderr >> "$TMPFILE" 2>&1
 
 
